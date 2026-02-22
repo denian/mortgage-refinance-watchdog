@@ -1,0 +1,16 @@
+[Unit]
+Description=Run Mortgage Refinance Watchdog every Monday at 9 AM Eastern
+
+[Timer]
+# 9 AM America/New_York — systemd respects TZ for OnCalendar when set here.
+# On systems where TZ in the unit doesn't work, fall back to:
+#   OnCalendar=Mon *-*-* 14:00:00 UTC   (9 AM EST, UTC-5)
+# or
+#   OnCalendar=Mon *-*-* 13:00:00 UTC   (9 AM EDT, UTC-4, summer)
+OnCalendar=Mon 09:00:00
+Environment=TZ=America/New_York
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

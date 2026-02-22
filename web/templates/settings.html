@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Settings</h1>
+
+<form method="POST" action="/settings" class="settings-form">
+
+  <fieldset>
+    <legend>Current Loan</legend>
+    <div class="form-group">
+      <label for="balance">Loan Balance ($)</label>
+      <input type="number" id="balance" name="balance" step="1000" required
+             value="{{ cfg.loan.balance }}">
+    </div>
+    <div class="form-group">
+      <label for="rate">Interest Rate (%) <small>e.g. 6.5 for 6.5%</small></label>
+      <input type="number" id="rate" name="rate" step="0.001" min="0.1" max="30" required
+             value="{{ (cfg.loan.rate * 100) | round(3) }}">
+    </div>
+    <div class="form-group">
+      <label for="remaining_months">Remaining Term (months)</label>
+      <input type="number" id="remaining_months" name="remaining_months" min="1" max="480" required
+             value="{{ cfg.loan.remaining_months }}">
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Refinance Parameters</legend>
+    <div class="form-group">
+      <label for="new_term_months">New Term (months)</label>
+      <input type="number" id="new_term_months" name="new_term_months" min="12" max="480" required
+             value="{{ cfg.refinance.new_term_months }}">
+    </div>
+    <div class="form-group">
+      <label for="closing_costs">Closing Costs ($)</label>
+      <input type="number" id="closing_costs" name="closing_costs" step="100" min="0" required
+             value="{{ cfg.refinance.closing_costs }}">
+    </div>
+    <div class="form-group">
+      <label for="break_even_threshold_months">Break-Even Threshold (months)</label>
+      <input type="number" id="break_even_threshold_months" name="break_even_threshold_months"
+             min="1" max="120" required value="{{ cfg.refinance.break_even_threshold_months }}">
+      <small>Alert fires if refinance breaks even within this many months (default: 24).</small>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Email</legend>
+    <div class="form-group">
+      <label for="recipient">Recipient Email</label>
+      <input type="email" id="recipient" name="recipient"
+             value="{{ cfg.email.recipient }}">
+    </div>
+    <div class="form-group">
+      <label for="smtp_host">SMTP Host</label>
+      <input type="text" id="smtp_host" name="smtp_host"
+             value="{{ cfg.email.smtp_host }}">
+    </div>
+    <div class="form-group">
+      <label for="smtp_port">SMTP Port</label>
+      <input type="number" id="smtp_port" name="smtp_port" min="1" max="65535"
+             value="{{ cfg.email.smtp_port }}">
+    </div>
+    <div class="form-group">
+      <label for="smtp_user">SMTP Username</label>
+      <input type="email" id="smtp_user" name="smtp_user"
+             value="{{ cfg.email.smtp_user }}">
+    </div>
+    <div class="form-group">
+      <label for="smtp_password">
+        SMTP Password <small>(leave blank to keep existing)</small>
+      </label>
+      <div class="password-wrap">
+        <input type="password" id="smtp_password" name="smtp_password"
+               autocomplete="new-password" placeholder="••••••••">
+        <button type="button" class="btn-toggle-pw" onclick="togglePw('smtp_password')">Show</button>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>API Keys</legend>
+    <div class="form-group">
+      <label for="fred_api_key">
+        FRED API Key <small>(leave blank to keep existing — get one free at fred.stlouisfed.org)</small>
+      </label>
+      <div class="password-wrap">
+        <input type="password" id="fred_api_key" name="fred_api_key"
+               autocomplete="off" placeholder="••••••••">
+        <button type="button" class="btn-toggle-pw" onclick="togglePw('fred_api_key')">Show</button>
+      </div>
+    </div>
+  </fieldset>
+
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">Save Settings</button>
+    <a href="/" class="btn-link">Cancel</a>
+  </div>
+
+</form>
+
+<hr>
+
+<h2>Test SMTP Connection</h2>
+<form method="POST" action="/test-smtp" class="settings-form">
+  <p>Uses the SMTP credentials from the form above (or existing saved credentials if left blank).</p>
+  <input type="hidden" name="smtp_host" value="{{ cfg.email.smtp_host }}">
+  <input type="hidden" name="smtp_port" value="{{ cfg.email.smtp_port }}">
+  <input type="hidden" name="smtp_user" value="{{ cfg.email.smtp_user }}">
+  <input type="hidden" name="smtp_password" value="">
+  <button type="submit" class="btn-secondary">Test Connection</button>
+</form>
+
+<script>
+function togglePw(id) {
+  const el = document.getElementById(id);
+  const btn = el.nextElementSibling;
+  if (el.type === 'password') {
+    el.type = 'text';
+    btn.textContent = 'Hide';
+  } else {
+    el.type = 'password';
+    btn.textContent = 'Show';
+  }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,15 @@
+.env
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+reports/*.md
+logs/
+*.egg-info/
+dist/
+build/
+.DS_Store
+.claude/
+PROMPT_v1.md

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mortgage Monitor</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar-brand" href="/">📊 Mortgage Monitor</a>
+    <div class="navbar-links">
+      <a href="/">Report</a>
+      <a href="/reports">History</a>
+      <a href="/settings">Settings</a>
+      <form method="POST" action="/run" style="display:inline">
+        <button type="submit" class="btn-run">Run Now</button>
+      </form>
+    </div>
+  </nav>
+
+  {% if flash %}
+  <div class="flash flash-{{ flash.kind }}">
+    {{ flash.message }}
+  </div>
+  {% endif %}
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    Mortgage Monitor &mdash; powered by FRED / Freddie Mac PMMS data
+  </footer>
+</body>
+</html>

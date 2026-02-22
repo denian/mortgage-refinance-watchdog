@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>All Reports</h1>
+
+{% if reports %}
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Result</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td>{{ r.date }}</td>
+        <td>
+          {% if r.alert %}
+            <span class="badge badge-alert">✅ ALERT</span>
+          {% else %}
+            <span class="badge badge-wait">⏳ Not Yet</span>
+          {% endif %}
+        </td>
+        <td><a href="/reports/{{ r.date }}">View Report</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No reports generated yet. Click <a href="/">Run Now</a> to generate one.</p>
+{% endif %}
+
+{% endblock %}

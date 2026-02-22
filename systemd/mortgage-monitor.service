@@ -1,0 +1,14 @@
+[Unit]
+Description=Mortgage Refinance Watchdog (weekly rate check)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=__INSTALL_DIR__/.venv/bin/python main.py
+EnvironmentFile=__INSTALL_DIR__/.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mortgage-monitor

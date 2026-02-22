@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if report_html %}
+  <article class="report">
+    {{ report_html | safe }}
+  </article>
+{% else %}
+  <div class="empty-state">
+    <h2>No report yet</h2>
+    <p>Click <strong>Run Now</strong> in the navbar to fetch current rates and generate your first report.</p>
+  </div>
+{% endif %}
+
+{% if reports %}
+  <section class="recent-reports">
+    <h3>Recent Reports</h3>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Result</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td>{{ r.date }}</td>
+          <td>
+            {% if r.alert %}
+              <span class="badge badge-alert">✅ ALERT</span>
+            {% else %}
+              <span class="badge badge-wait">⏳ Not Yet</span>
+            {% endif %}
+          </td>
+          <td><a href="/reports/{{ r.date }}">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a href="/reports">View all reports &rarr;</a>
+  </section>
+{% endif %}
+
+{% endblock %}
