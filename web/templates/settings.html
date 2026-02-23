@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>Settings</h1>
+<div class="page-header">
+  <h1>Settings</h1>
+  <p>Configure your loan details, refinance parameters, and notifications</p>
+</div>
 
 <form method="POST" action="/settings" class="settings-form">
 
@@ -82,7 +85,7 @@
     <legend>API Keys</legend>
     <div class="form-group">
       <label for="fred_api_key">
-        FRED API Key <small>(leave blank to keep existing — get one free at fred.stlouisfed.org)</small>
+        FRED API Key <small>(leave blank to keep existing &mdash; get one free at fred.stlouisfed.org)</small>
       </label>
       <div class="password-wrap">
         <input type="password" id="fred_api_key" name="fred_api_key"
@@ -101,9 +104,11 @@
 
 <hr>
 
-<h2>Test SMTP Connection</h2>
-<form method="POST" action="/test-smtp" class="settings-form">
+<div class="page-header" style="margin-bottom:.75rem">
+  <h1 style="font-size:1rem">Test SMTP Connection</h1>
   <p>Uses the SMTP credentials from the form above (or existing saved credentials if left blank).</p>
+</div>
+<form method="POST" action="/test-smtp" class="settings-form">
   <input type="hidden" name="smtp_host" value="{{ cfg.email.smtp_host }}">
   <input type="hidden" name="smtp_port" value="{{ cfg.email.smtp_port }}">
   <input type="hidden" name="smtp_user" value="{{ cfg.email.smtp_user }}">
