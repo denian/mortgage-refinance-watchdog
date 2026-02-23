@@ -13,7 +13,7 @@ target window, and emails you a full report either way.
 - Prints a formatted report to the console and saves a Markdown file
 - Emails an HTML report with the Markdown file attached
 - **Web UI** (FastAPI) to view all reports and manage settings at
-  `http://your-server:8080`
+  `http://your-server:9090`
 - Automated weekly schedule via **systemd timer** (handles missed runs if the server
   was offline)
 
@@ -111,11 +111,62 @@ You can also edit all settings through the web UI at `/settings`.
 
 ## Starting the Web UI
 
+### As an installed service (recommended)
+
+The install scripts set up the web UI to start automatically at boot and restart on crash.
+
+**Linux (systemd)**
 ```bash
-.venv/bin/uvicorn web.app:app --host 0.0.0.0 --port 8080
+sudo bash systemd/install.sh        # installs and starts everything
+systemctl status mortgage-monitor-web.service
 ```
 
-Then open http://your-server:8080 in a browser.
+**macOS (launchd)**
+```bash
+bash launchd/install.sh             # installs and starts everything
+launchctl list | grep mortgage
+```
+
+### As a background process (quick start)
+
+```bash
+# Start in background, survives closing the terminal
+nohup .venv/bin/uvicorn web.app:app --host 0.0.0.0 --port 9090 &> logs/web.log &
+echo $! > logs/web.pid
+
+# Stop it later
+kill $(cat logs/web.pid)
+```
+
+### Foreground (development / testing)
+
+```bash
+.venv/bin/uvicorn web.app:app --host 0.0.0.0 --port 9090
+```
+
+Then open http://your-server:9090 in a browser.
+
+### Opening port 9090 on Linux
+
+If accessing the UI from another machine on the network, allow port 9090 through the firewall:
+
+**Ubuntu / Debian (ufw)**
+```bash
+sudo ufw allow 9090/tcp
+sudo ufw status
+```
+
+**RHEL / Fedora / CentOS (firewalld)**
+```bash
+sudo firewall-cmd --add-port=9090/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+**Verify the port is open and uvicorn is listening**
+```bash
+ss -tlnp | grep 9090
+# Should show  0.0.0.0:9090
+```
 
 ---
 
