@@ -23,6 +23,12 @@ echo "  Install dir : $INSTALL_DIR"
 echo "  Running as  : $CURRENT_USER"
 echo ""
 
+echo "Stopping existing services..."
+systemctl stop mortgage-monitor-web.service 2>/dev/null || true
+systemctl stop mortgage-monitor.timer 2>/dev/null || true
+systemctl stop mortgage-monitor.service 2>/dev/null || true
+echo ""
+
 for UNIT in mortgage-monitor.service mortgage-monitor.timer mortgage-monitor-web.service; do
     SRC="$INSTALL_DIR/systemd/$UNIT"
     DEST="$SYSTEMD_DIR/$UNIT"
