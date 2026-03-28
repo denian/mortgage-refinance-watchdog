@@ -43,6 +43,10 @@ pip install -r requirements.txt
 # 3. Copy the secrets template and fill in your values
 cp .env.example .env
 nano .env          # set FRED_API_KEY and SMTP_PASSWORD
+
+# 4. Copy the sample config and fill in your loan details
+cp config-sample.yaml config.yaml
+nano config.yaml
 ```
 
 ### Get a FRED API Key
@@ -70,7 +74,7 @@ For other providers, use your regular SMTP password.
 
 ## Configuration
 
-Edit `config.yaml` to set your loan details and email address:
+Copy `config-sample.yaml` to `config.yaml` (which is gitignored) and edit it with your loan details and email address:
 
 ```yaml
 loan:
@@ -253,7 +257,8 @@ systemctl start mortgage-monitor.service
 ```
 mortgage-monitor/
 ├── .env                        # Secrets (not committed)
-├── config.yaml                 # User settings
+├── config.yaml                 # User settings (not committed — copy from config-sample.yaml)
+├── config-sample.yaml          # Example config to copy and customize
 ├── requirements.txt
 ├── main.py                     # CLI entry point
 ├── src/

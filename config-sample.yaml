@@ -1,0 +1,15 @@
+loan:
+  balance: 800000        # Current outstanding balance ($)
+  rate: 0.065            # Current interest rate as a decimal (6.5% → 0.065)
+  remaining_months: 360  # Months left on the loan
+
+refinance:
+  new_term_months: 360              # Term for the hypothetical new loan
+  closing_costs: 6000               # Estimated closing costs ($)
+  break_even_threshold_months: 24   # Alert if break-even ≤ this many months
+
+email:
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  smtp_user: you@gmail.com
+  recipient: you@gmail.com
