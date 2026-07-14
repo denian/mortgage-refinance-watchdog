@@ -15,6 +15,7 @@ def build_report_data(
     analysis: dict,
     history: pd.Series,
     run_date: str = "",
+    scenario_remaining: dict | None = None,
 ) -> dict:
     run_date = run_date or date.today().isoformat()
     week_high = float(history.max()) if not history.empty else None
@@ -23,6 +24,7 @@ def build_report_data(
         "run_date": run_date,
         "rate_data": rate_data,
         "scenario_a": scenario_a,
+        "scenario_remaining": scenario_remaining,
         "scenario_b": scenario_b,
         "analysis": analysis,
         "week_high": week_high,
@@ -33,6 +35,7 @@ def build_report_data(
 def print_console_report(report_data: dict) -> None:
     d = report_data
     a = d["scenario_a"]
+    r = d.get("scenario_remaining")
     b = d["scenario_b"]
     analysis = d["analysis"]
     rate = d["rate_data"]
@@ -54,12 +57,26 @@ def print_console_report(report_data: dict) -> None:
     print(f"\n{'─' * 60}")
     print(f"  SCENARIO COMPARISON")
     print(f"{'─' * 60}")
-    rows = _comparison_rows(a, b)
-    col_w = 28
-    print(f"  {'Metric':<{col_w}} {'Current Loan':>16}  {'Refinanced':>16}")
-    print(f"  {'─' * col_w} {'─' * 16}  {'─' * 16}")
-    for label, va, vb in rows:
-        print(f"  {label:<{col_w}} {va:>16}  {vb:>16}")
+    rows = _comparison_rows(a, b, r)
+    col_w = 20
+    val_w = 19
+    if r is not None:
+        print(f"  {'Metric':<{col_w}} {'Current Loan':>{val_w}}  {'Remaining':>{val_w}}  {'Refinanced':>{val_w}}")
+        print(f"  {'─' * col_w} {'─' * val_w}  {'─' * val_w}  {'─' * val_w}")
+        for label, va, vr, vb in rows:
+            print(f"  {label:<{col_w}} {va:>{val_w}}  {vr:>{val_w}}  {vb:>{val_w}}")
+    else:
+        print(f"  {'Metric':<{col_w}} {'Current Loan':>{val_w}}  {'Refinanced':>{val_w}}")
+        print(f"  {'─' * col_w} {'─' * val_w}  {'─' * val_w}")
+        for label, va, vb in rows:
+            print(f"  {label:<{col_w}} {va:>{val_w}}  {vb:>{val_w}}")
+
+    if r is not None:
+        print(
+            f"\n  Principal-only payments to date: "
+            f"{format_currency(r['extra_principal_paid'])} — interest saved: "
+            f"{format_currency(r['interest_saved'])}"
+        )
 
     print(f"\n{'─' * 60}")
     print(f"  BREAK-EVEN ANALYSIS")
@@ -83,6 +100,7 @@ def print_console_report(report_data: dict) -> None:
 def render_markdown(report_data: dict) -> str:
     d = report_data
     a = d["scenario_a"]
+    r = d.get("scenario_remaining")
     b = d["scenario_b"]
     analysis = d["analysis"]
     rate = d["rate_data"]
@@ -111,11 +129,27 @@ def render_markdown(report_data: dict) -> str:
         f"",
         f"## Scenario Comparison",
         f"",
-        f"| Metric | Current Loan | Refinanced Loan |",
-        f"|---|---|---|",
     ]
-    for label, va, vb in _comparison_rows(a, b):
-        lines.append(f"| {label} | {va} | {vb} |")
+    if r is not None:
+        lines += [
+            f"| Metric | Current Loan | Current Loan (remaining) | Refinanced Loan |",
+            f"|---|---|---|---|",
+        ]
+        for label, va, vr, vb in _comparison_rows(a, b, r):
+            lines.append(f"| {label} | {va} | {vr} | {vb} |")
+        lines += [
+            f"",
+            f"*Principal-only payments to date: "
+            f"{format_currency(r['extra_principal_paid'])} — interest saved: "
+            f"{format_currency(r['interest_saved'])}*",
+        ]
+    else:
+        lines += [
+            f"| Metric | Current Loan | Refinanced Loan |",
+            f"|---|---|---|",
+        ]
+        for label, va, vb in _comparison_rows(a, b):
+            lines.append(f"| {label} | {va} | {vb} |")
 
     lines += [
         f"",
@@ -160,29 +194,46 @@ def save_report(markdown: str, run_date: str = "") -> Path:
     return timestamped
 
 
-def _comparison_rows(a: dict, b: dict) -> list[tuple[str, str, str]]:
-    be_months = int(b["term_months"] / 12)
-    a_months = int(a["term_months"] / 12)
-    return [
-        ("Loan Balance",
-         format_currency(a["balance"]),
-         format_currency(b["balance"])),
-        ("Interest Rate",
-         format_percent(a["annual_rate"]),
-         format_percent(b["annual_rate"])),
-        ("Term",
-         f"{a_months} years ({a['term_months']} mo)",
-         f"{be_months} years ({b['term_months']} mo)"),
-        ("Monthly Payment",
-         format_currency(a["monthly_payment"]),
-         format_currency(b["monthly_payment"])),
-        ("Total Interest",
-         format_currency(a["total_interest"]),
-         format_currency(b["total_interest"])),
-        ("Closing Costs",
-         "—",
-         format_currency(b["closing_costs"])),
-        ("Total Cost",
-         format_currency(a["balance"] + a["total_interest"]),
-         format_currency(b["balance"] + b["total_cost"])),
+def _comparison_rows(a: dict, b: dict, r: dict | None = None) -> list[tuple]:
+    def _term(s: dict) -> str:
+        return f"{s['term_months'] / 12:.1f} years ({s['term_months']} mo)".replace(".0 ", " ")
+
+    a_col = [
+        format_currency(a["balance"]),
+        format_percent(a["annual_rate"]),
+        _term(a),
+        format_currency(a["monthly_payment"]),
+        format_currency(a["total_interest"]),
+        "—",
+        format_currency(a["balance"] + a["total_interest"]),
     ]
+    b_col = [
+        format_currency(b["balance"]),
+        format_percent(b["annual_rate"]),
+        _term(b),
+        format_currency(b["monthly_payment"]),
+        format_currency(b["total_interest"]),
+        format_currency(b["closing_costs"]),
+        format_currency(b["balance"] + b["total_cost"]),
+    ]
+    labels = [
+        "Loan Balance",
+        "Interest Rate",
+        "Term",
+        "Monthly Payment",
+        "Total Interest",
+        "Closing Costs",
+        "Total Cost",
+    ]
+    if r is None:
+        return list(zip(labels, a_col, b_col))
+    r_col = [
+        format_currency(r["balance"]),
+        format_percent(r["annual_rate"]),
+        _term(r),
+        format_currency(r["monthly_payment"]),
+        format_currency(r["total_interest"]),
+        "—",
+        format_currency(r["total_cost"]),
+    ]
+    return list(zip(labels, a_col, r_col, b_col))

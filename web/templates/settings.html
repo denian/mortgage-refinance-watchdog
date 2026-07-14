@@ -25,6 +25,33 @@
       <input type="number" id="remaining_months" name="remaining_months" min="1" max="480" required
              value="{{ cfg.loan.remaining_months }}">
     </div>
+    <div class="form-group">
+      <label for="first_payment_date">
+        First Payment Date <small>(optional — enables the "Current Loan (remaining)" report column)</small>
+      </label>
+      <input type="date" id="first_payment_date" name="first_payment_date"
+             value="{{ cfg.loan.first_payment_date or '' }}">
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Principal-Only Payments</legend>
+    <div class="form-group">
+      <small style="margin-top:0">Extra payments applied directly to principal. They shorten the
+      term and reduce lifetime interest; the report shows the impact in the
+      "Current Loan (remaining)" column. Requires First Payment Date above.</small>
+    </div>
+    <div id="payment-rows">
+      {% for p in cfg.get('principal_payments') or [] %}
+      <div class="payment-row">
+        <input type="date" name="payment_date" value="{{ p.date }}" required>
+        <input type="number" name="payment_amount" value="{{ p.amount }}"
+               step="100" min="1" placeholder="Amount ($)" required>
+        <button type="button" class="btn-toggle-pw" onclick="this.parentElement.remove()">Remove</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn-secondary" onclick="addPaymentRow()">+ Add Payment</button>
   </fieldset>
 
   <fieldset>
@@ -117,6 +144,33 @@
 </form>
 
 <script>
+function addPaymentRow() {
+  const row = document.createElement('div');
+  row.className = 'payment-row';
+
+  const date = document.createElement('input');
+  date.type = 'date';
+  date.name = 'payment_date';
+  date.required = true;
+
+  const amount = document.createElement('input');
+  amount.type = 'number';
+  amount.name = 'payment_amount';
+  amount.step = '100';
+  amount.min = '1';
+  amount.placeholder = 'Amount ($)';
+  amount.required = true;
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'btn-toggle-pw';
+  remove.textContent = 'Remove';
+  remove.onclick = () => row.remove();
+
+  row.append(date, amount, remove);
+  document.getElementById('payment-rows').appendChild(row);
+}
+
 function togglePw(id) {
   const el = document.getElementById(id);
   const btn = el.nextElementSibling;

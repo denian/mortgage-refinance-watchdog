@@ -4,7 +4,26 @@
 {% if report_html %}
   <div class="card report">
     <div class="card-body">
-      {{ report_html | safe }}
+      {% if whatif_points %}
+        {{ report_before | safe }}
+        <div class="whatif">
+          <div class="whatif-label">If you made a principal-only payment today</div>
+          <div class="whatif-slider-row">
+            <input type="range" id="whatif-slider"
+                   min="{{ whatif_points[0].amount }}" max="{{ whatif_points[-1].amount }}"
+                   step="{{ whatif_points[1].amount - whatif_points[0].amount }}"
+                   value="10000" aria-label="Principal-only payment amount">
+            <span class="whatif-amount" id="whatif-amount"></span>
+          </div>
+          <div class="whatif-result">
+            <span class="whatif-value" id="whatif-saved"></span>
+            <span class="whatif-sub" id="whatif-sub"></span>
+          </div>
+        </div>
+        {{ report_after | safe }}
+      {% else %}
+        {{ report_html | safe }}
+      {% endif %}
     </div>
   </div>
 {% else %}
@@ -43,6 +62,30 @@
       </table>
     </div>
   </section>
+{% endif %}
+
+{% if whatif_points %}
+<script>
+  const WHATIF = {{ whatif_points | tojson }};
+  const byAmount = Object.fromEntries(WHATIF.map(p => [p.amount, p]));
+  const slider = document.getElementById('whatif-slider');
+  const fmt = n => '$' + n.toLocaleString('en-US');
+
+  function updateWhatif() {
+    const p = byAmount[slider.value];
+    if (!p) return;
+    document.getElementById('whatif-amount').textContent = fmt(p.amount);
+    document.getElementById('whatif-saved').textContent = fmt(p.saved);
+    document.getElementById('whatif-sub').textContent =
+      'interest saved over the life of the loan' +
+      (p.months_earlier > 0
+        ? ` · pays off ${p.months_earlier} month${p.months_earlier === 1 ? '' : 's'} earlier`
+        : '');
+  }
+
+  slider.addEventListener('input', updateWhatif);
+  updateWhatif();
+</script>
 {% endif %}
 
 {% endblock %}

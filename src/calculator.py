@@ -1,3 +1,5 @@
+from datetime import date
+
 import numpy_financial as npf
 
 
@@ -21,6 +23,83 @@ def compute_scenario_a(balance: float, annual_rate: float, remaining_months: int
         "monthly_payment": pmt,
         "total_interest": total_interest(balance, annual_rate, remaining_months),
     }
+
+
+def compute_scenario_remaining(
+    balance: float,
+    annual_rate: float,
+    term_months: int,
+    first_payment_date: date,
+    principal_payments: list[dict],
+    as_of: date | None = None,
+) -> dict:
+    """Current loan as of `as_of`, accounting for scheduled payments made since
+    `first_payment_date` and any extra principal-only payments.
+
+    Extra payments keep the monthly payment the same but shorten the term, so
+    the remaining term and lifetime interest are found by simulating the
+    amortization schedule rather than by closed formula.
+    """
+    as_of = as_of or date.today()
+    pmt = monthly_payment(balance, annual_rate, term_months)
+    full_interest = total_interest(balance, annual_rate, term_months)
+    monthly_rate = annual_rate / 12
+
+    events = []
+    for k in range(term_months):
+        due = _add_months(first_payment_date, k)
+        if due > as_of:
+            break
+        events.append((due, 0, pmt))  # scheduled payment (0 sorts before extras same-day)
+    extra_paid = 0.0
+    for p in principal_payments:
+        if p["date"] <= as_of:
+            events.append((p["date"], 1, float(p["amount"])))
+            extra_paid += float(p["amount"])
+    events.sort(key=lambda e: (e[0], e[1]))
+
+    remaining = balance
+    interest_paid = 0.0
+    for _, kind, amount in events:
+        if remaining <= 0:
+            break
+        if kind == 0:
+            interest = remaining * monthly_rate
+            interest_paid += interest
+            remaining -= min(pmt - interest, remaining)
+        else:
+            remaining -= min(amount, remaining)
+
+    # Simulate the rest of the schedule to payoff. Count full months only;
+    # a small final partial payment doesn't count as a remaining month.
+    future_balance = remaining
+    future_interest = 0.0
+    remaining_months = 0
+    while future_balance > 0.005:
+        interest = future_balance * monthly_rate
+        future_interest += interest
+        principal = min(pmt - interest, future_balance)
+        future_balance -= principal
+        if principal >= pmt - interest - 0.005:
+            remaining_months += 1
+
+    lifetime_interest = interest_paid + future_interest
+    return {
+        "label": "Current Loan (remaining)",
+        "balance": remaining,
+        "annual_rate": annual_rate,
+        "term_months": remaining_months,
+        "monthly_payment": pmt,
+        "total_interest": lifetime_interest,
+        "interest_saved": full_interest - lifetime_interest,
+        "extra_principal_paid": extra_paid,
+        "total_cost": balance + lifetime_interest,
+    }
+
+
+def _add_months(d: date, n: int) -> date:
+    year, month = divmod(d.month - 1 + n, 12)
+    return date(d.year + year, month + 1, min(d.day, 28))
 
 
 def compute_scenario_b(

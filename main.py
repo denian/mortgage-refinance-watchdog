@@ -5,7 +5,12 @@ from pathlib import Path
 
 from src.config import get_full_config
 from src.rate_fetcher import fetch_current_rate, fetch_rate_history, RateFetchError
-from src.calculator import compute_scenario_a, compute_scenario_b, compute_break_even
+from src.calculator import (
+    compute_scenario_a,
+    compute_scenario_b,
+    compute_scenario_remaining,
+    compute_break_even,
+)
 from src.report import build_report_data, print_console_report, render_markdown, save_report
 from src.emailer import build_subject, send_email
 
@@ -49,6 +54,15 @@ def run(dry_run: bool = False, config_path: Path | None = None) -> None:
         annual_rate=loan["rate"],
         remaining_months=loan["remaining_months"],
     )
+    scenario_remaining = None
+    if loan.get("first_payment_date"):
+        scenario_remaining = compute_scenario_remaining(
+            balance=loan["balance"],
+            annual_rate=loan["rate"],
+            term_months=loan["remaining_months"],
+            first_payment_date=loan["first_payment_date"],
+            principal_payments=cfg.get("principal_payments", []) or [],
+        )
     scenario_b = compute_scenario_b(
         balance=loan["balance"],
         new_annual_rate=rate_data["rate"] / 100,
@@ -62,7 +76,10 @@ def run(dry_run: bool = False, config_path: Path | None = None) -> None:
         threshold_months=refi["break_even_threshold_months"],
     )
 
-    report_data = build_report_data(rate_data, scenario_a, scenario_b, analysis, history)
+    report_data = build_report_data(
+        rate_data, scenario_a, scenario_b, analysis, history,
+        scenario_remaining=scenario_remaining,
+    )
     print_console_report(report_data)
 
     md = render_markdown(report_data)

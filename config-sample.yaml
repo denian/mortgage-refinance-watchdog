@@ -1,7 +1,19 @@
 loan:
-  balance: 800000        # Current outstanding balance ($)
+  balance: 800000        # Original loan balance ($)
   rate: 0.065            # Current interest rate as a decimal (6.5% → 0.065)
-  remaining_months: 360  # Months left on the loan
+  remaining_months: 360  # Original term of the loan, in months
+  # Optional: date of the first scheduled payment. When set, reports add a
+  # "Current Loan (remaining)" column with the remaining balance/term as of
+  # the run date, accounting for any principal_payments below.
+  # first_payment_date: 2025-01-01
+
+# Optional: extra principal-only payments you've made. These shorten the term
+# (the monthly payment stays the same) and reduce lifetime interest.
+# principal_payments:
+#   - date: 2025-02-15
+#     amount: 1000
+#   - date: 2025-06-01
+#     amount: 1000
 
 refinance:
   new_term_months: 360              # Term for the hypothetical new loan

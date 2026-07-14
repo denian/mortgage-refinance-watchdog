@@ -232,6 +232,56 @@ tbody tr:hover td { background: var(--bg); }
 .report table { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .report thead { background: var(--bg); }
 
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: .75rem;
+}
+.table-wrap table { margin-bottom: 0; }
+
+/* ── What-if widget ── */
+.whatif {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.125rem 1.125rem;
+  margin: 1.25rem 0;
+}
+.whatif-label {
+  font-size: .8125rem;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin-bottom: .75rem;
+}
+.whatif-slider-row { display: flex; align-items: center; gap: .875rem; }
+.whatif-slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--indigo);
+  cursor: pointer;
+  min-width: 0;
+}
+.whatif-amount {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 4.5rem;
+  text-align: right;
+}
+.whatif-result {
+  margin-top: .875rem;
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.whatif-value {
+  font-size: 1.625rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--text);
+}
+.whatif-sub { font-size: .8125rem; color: var(--text-muted); }
+
 /* ── Badges ── */
 .badge {
   display: inline-flex;
@@ -304,6 +354,7 @@ label small { color: var(--text-muted); font-weight: 400; margin-left: .25rem; }
 input[type="text"],
 input[type="email"],
 input[type="number"],
+input[type="date"],
 input[type="password"] {
   width: 100%;
   padding: .5rem .75rem;
@@ -325,6 +376,9 @@ input::placeholder { color: var(--text-muted); }
 
 .password-wrap { display: flex; gap: .5rem; }
 .password-wrap input { flex: 1; }
+
+.payment-row { display: flex; gap: .5rem; margin-bottom: .625rem; }
+.payment-row input { flex: 1; }
 
 .btn-toggle-pw {
   padding: .5rem .75rem;
@@ -392,6 +446,9 @@ footer {
   .navbar-links a { padding: .375rem .5rem; }
   .container { padding: 1.25rem 1rem 4rem; }
   .password-wrap { flex-direction: column; }
+  .payment-row { flex-wrap: wrap; }
   .form-actions { flex-direction: column; align-items: stretch; }
   .btn-primary, .btn-secondary { text-align: center; }
+  .report .card-body { padding: 1rem; }
+  .table-wrap th, .table-wrap td { padding: .5rem .625rem; white-space: nowrap; }
 }

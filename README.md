@@ -78,9 +78,19 @@ Copy `config-sample.yaml` to `config.yaml` (which is gitignored) and edit it wit
 
 ```yaml
 loan:
-  balance: 800000        # Current outstanding balance ($)
+  balance: 800000        # Original loan balance ($)
   rate: 0.065            # Current interest rate as a decimal (6.5% → 0.065)
-  remaining_months: 360  # Months left on the loan
+  remaining_months: 360  # Original term of the loan, in months
+  # Optional — enables the "Current Loan (remaining)" report column:
+  first_payment_date: 2025-01-01  # Date of the loan's first scheduled payment
+
+# Optional: extra principal-only payments you've made. These shorten the
+# term (the monthly payment stays the same) and reduce lifetime interest.
+principal_payments:
+  - date: 2025-02-15
+    amount: 1000
+  - date: 2025-06-01
+    amount: 1000
 
 refinance:
   new_term_months: 360              # Term for the hypothetical new loan
@@ -94,7 +104,9 @@ email:
   recipient: you@gmail.com
 ```
 
-You can also edit all settings through the web UI at `/settings`.
+When `loan.first_payment_date` is set, reports include a **Current Loan (remaining)** column between "Current Loan" and "Refinanced Loan": the outstanding balance and remaining term as of the run date (computed by simulating the amortization schedule, including any `principal_payments`), the unchanged monthly payment, and lifetime interest reduced by the interest your principal-only payments save.
+
+You can also edit all settings through the web UI at `/settings`, including adding or removing principal-only payments.
 
 ---
 

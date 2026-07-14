@@ -1,3 +1,4 @@
+import datetime
 import os
 import re
 from pathlib import Path
@@ -43,6 +44,7 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
     if data is None:
         data = {}
     _validate_config(data)
+    _normalize_dates(data)
     return data
 
 
@@ -112,6 +114,23 @@ def _validate_config(data: dict) -> None:
     remaining = loan.get("remaining_months")
     if remaining is None or not isinstance(remaining, int) or remaining <= 0:
         errors.append("loan.remaining_months must be a positive integer")
+    first_payment = loan.get("first_payment_date")
+    if first_payment is not None and _coerce_date(first_payment) is None:
+        errors.append("loan.first_payment_date must be a date (YYYY-MM-DD)")
+
+    payments = data.get("principal_payments", [])
+    if not isinstance(payments, list):
+        errors.append("principal_payments must be a list of {date, amount} entries")
+    else:
+        for idx, p in enumerate(payments):
+            if not isinstance(p, dict) or _coerce_date(p.get("date")) is None:
+                errors.append(f"principal_payments[{idx}].date must be a date (YYYY-MM-DD)")
+                continue
+            amount = p.get("amount")
+            if amount is None or not isinstance(amount, (int, float)) or amount <= 0:
+                errors.append(f"principal_payments[{idx}].amount must be a positive number")
+        if payments and first_payment is None:
+            errors.append("loan.first_payment_date is required when principal_payments is set")
 
     refi = data.get("refinance", {})
     new_term = refi.get("new_term_months")
@@ -131,6 +150,25 @@ def _validate_config(data: dict) -> None:
 
     if errors:
         raise ValueError("Invalid config.yaml:\n  - " + "\n  - ".join(errors))
+
+
+def _coerce_date(value: Any) -> datetime.date | None:
+    if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.date.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _normalize_dates(data: dict) -> None:
+    loan = data.get("loan", {})
+    if loan.get("first_payment_date") is not None:
+        loan["first_payment_date"] = _coerce_date(loan["first_payment_date"])
+    for p in data.get("principal_payments", []) or []:
+        p["date"] = _coerce_date(p["date"])
 
 
 def _deep_copy(d: Any) -> Any:

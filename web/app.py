@@ -1,4 +1,5 @@
 import threading
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
@@ -8,6 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from src.calculator import compute_scenario_remaining
 from src.config import get_full_config, save_config, save_secret, load_config, ENV_PATH
 from src.emailer import test_smtp_connection
 
@@ -43,7 +45,12 @@ def _clear_flash(response) -> None:
 
 def _render_md_file(path: Path) -> str:
     text = path.read_text(encoding="utf-8")
-    return md_lib.markdown(text, extensions=["tables", "fenced_code"])
+    html = md_lib.markdown(text, extensions=["tables", "fenced_code"])
+    # Wrap tables so wide ones scroll horizontally instead of overflowing
+    # the page on narrow screens.
+    return html.replace("<table>", '<div class="table-wrap"><table>').replace(
+        "</table>", "</table></div>"
+    )
 
 
 def _list_reports() -> list[dict]:
@@ -56,16 +63,60 @@ def _list_reports() -> list[dict]:
     return reports
 
 
+_BREAK_EVEN_HEADING = "<h2>Break-Even Analysis</h2>"
+
+# Range offered by the what-if slider, in dollars.
+_WHATIF_MIN, _WHATIF_MAX, _WHATIF_STEP = 1_000, 25_000, 500
+
+
+def _whatif_points() -> list[dict] | None:
+    """Interest saved by a hypothetical principal-only payment made today,
+    for each slider amount, given the loan's current month and the extra
+    payments already on record."""
+    try:
+        cfg = load_config()
+    except ValueError:
+        return None
+    loan = cfg["loan"]
+    if not loan.get("first_payment_date"):
+        return None
+    payments = cfg.get("principal_payments", []) or []
+    today = date.today()
+    loan_args = (loan["balance"], loan["rate"], loan["remaining_months"], loan["first_payment_date"])
+    base = compute_scenario_remaining(*loan_args, payments, as_of=today)
+    points = []
+    for amount in range(_WHATIF_MIN, _WHATIF_MAX + 1, _WHATIF_STEP):
+        s = compute_scenario_remaining(
+            *loan_args, payments + [{"date": today, "amount": amount}], as_of=today
+        )
+        points.append({
+            "amount": amount,
+            "saved": round(s["interest_saved"] - base["interest_saved"]),
+            "months_earlier": base["term_months"] - s["term_months"],
+        })
+    return points
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     latest = REPORTS_DIR / "latest.md"
     report_html = _render_md_file(latest) if latest.exists() else None
+    whatif_points = _whatif_points() if report_html else None
+    report_before = report_after = None
+    if report_html and whatif_points and _BREAK_EVEN_HEADING in report_html:
+        report_before, rest = report_html.split(_BREAK_EVEN_HEADING, 1)
+        report_after = _BREAK_EVEN_HEADING + rest
+    else:
+        whatif_points = None
     flash = _get_flash(request)
     response = templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "report_html": report_html,
+            "report_before": report_before,
+            "report_after": report_after,
+            "whatif_points": whatif_points,
             "flash": flash,
             "reports": _list_reports()[:5],
         },
@@ -127,13 +178,41 @@ async def settings_post(
     smtp_host: Annotated[str, Form()],
     smtp_port: Annotated[int, Form()],
     smtp_user: Annotated[str, Form()],
+    first_payment_date: Annotated[str, Form()] = "",
+    payment_date: Annotated[list[str], Form()] = [],
+    payment_amount: Annotated[list[float], Form()] = [],
     smtp_password: Annotated[str, Form()] = "",
     fred_api_key: Annotated[str, Form()] = "",
 ):
+    try:
+        fpd = date.fromisoformat(first_payment_date) if first_payment_date else None
+        payments = [
+            {"date": date.fromisoformat(d), "amount": amount}
+            for d, amount in zip(payment_date, payment_amount)
+            if d
+        ]
+    except ValueError:
+        resp = RedirectResponse("/settings", status_code=303)
+        _flash(resp, "Invalid date format (expected YYYY-MM-DD).", "error")
+        return resp
+    payments.sort(key=lambda p: p["date"])
+    if payments and not fpd:
+        resp = RedirectResponse("/settings", status_code=303)
+        _flash(resp, "First Payment Date is required when principal-only payments are set.", "error")
+        return resp
+
     cfg = load_config()
     cfg["loan"]["balance"] = balance
     cfg["loan"]["rate"] = rate / 100 if rate > 1 else rate
     cfg["loan"]["remaining_months"] = remaining_months
+    if fpd:
+        cfg["loan"]["first_payment_date"] = fpd
+    else:
+        cfg["loan"].pop("first_payment_date", None)
+    if payments:
+        cfg["principal_payments"] = payments
+    else:
+        cfg.pop("principal_payments", None)
     cfg["refinance"]["new_term_months"] = new_term_months
     cfg["refinance"]["closing_costs"] = closing_costs
     cfg["refinance"]["break_even_threshold_months"] = break_even_threshold_months

@@ -1,9 +1,12 @@
+from datetime import date
+
 import pytest
 from src.calculator import (
     monthly_payment,
     total_interest,
     compute_scenario_a,
     compute_scenario_b,
+    compute_scenario_remaining,
     compute_break_even,
     format_currency,
     format_percent,
@@ -40,6 +43,68 @@ def test_compute_scenario_b_includes_closing_costs():
     result = compute_scenario_b(800_000, 0.055, 360, 6_000)
     assert result["closing_costs"] == 6_000
     assert result["total_cost"] == result["total_interest"] + 6_000
+
+
+def test_compute_scenario_remaining_no_history_matches_original():
+    # As of the day before the first payment, nothing has changed yet
+    result = compute_scenario_remaining(
+        800_000, 0.065, 360, date(2026, 4, 1), [], as_of=date(2026, 3, 31)
+    )
+    assert result["balance"] == 800_000
+    assert result["term_months"] == 360
+    assert abs(result["interest_saved"]) < 0.01
+    assert result["extra_principal_paid"] == 0
+
+
+def test_compute_scenario_remaining_known_schedule():
+    # Regression values for a fixed scenario. The simulation model (scheduled
+    # payments on their due dates, extra payments applied on their own dates)
+    # was originally validated to the dollar against a real servicer statement.
+    payments = [
+        {"date": date(2025, 3, 10), "amount": 8_000},
+        {"date": date(2025, 6, 5), "amount": 5_000},
+    ]
+    result = compute_scenario_remaining(
+        500_000, 0.06, 360, date(2025, 2, 1), payments, as_of=date(2025, 7, 15)
+    )
+    assert result["monthly_payment"] == pytest.approx(2_997.75, abs=0.01)
+    assert result["balance"] == pytest.approx(483_789.70, abs=0.01)
+    assert result["term_months"] == 329
+    assert result["extra_principal_paid"] == 13_000
+    assert result["interest_saved"] == pytest.approx(59_686.77, abs=0.01)
+    # Lifetime interest = original total interest minus interest saved
+    original = total_interest(500_000, 0.06, 360)
+    assert result["total_interest"] == pytest.approx(
+        original - result["interest_saved"], abs=0.01
+    )
+
+
+def test_compute_scenario_remaining_extra_payment_today_saves_more():
+    # Basis of the what-if widget: adding a hypothetical payment today
+    # strictly increases interest saved, and larger payments save more.
+    today = date(2025, 7, 15)
+    payments = [{"date": date(2025, 3, 10), "amount": 8_000}]
+
+    def saved(extra: float) -> float:
+        extras = payments + ([{"date": today, "amount": extra}] if extra else [])
+        return compute_scenario_remaining(
+            500_000, 0.06, 360, date(2025, 2, 1), extras, as_of=today
+        )["interest_saved"]
+
+    base = saved(0)
+    assert saved(1_000) > base
+    assert saved(10_000) > saved(1_000)
+    assert saved(25_000) > saved(10_000)
+    # Each prepaid dollar saves several dollars of interest on a young 30-yr loan
+    assert (saved(10_000) - base) / 10_000 > 2
+
+
+def test_compute_scenario_remaining_ignores_future_payments():
+    payments = [{"date": date(2026, 8, 1), "amount": 50_000}]
+    result = compute_scenario_remaining(
+        800_000, 0.065, 360, date(2026, 4, 1), payments, as_of=date(2026, 7, 13)
+    )
+    assert result["extra_principal_paid"] == 0
 
 
 def test_break_even_alert_triggered():
